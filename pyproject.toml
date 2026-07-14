@@ -1,0 +1,64 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pytest-duration-guard"
+version = "0.1.0"
+description = "A pytest plugin that passively tracks every test's wall-clock duration across runs and flags regressions and newly-slow tests."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "az-pz" }]
+keywords = [
+    "pytest",
+    "testing",
+    "performance",
+    "duration",
+    "regression",
+    "ci",
+    "benchmark",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Framework :: Pytest",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = ["pytest>=7.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[project.urls]
+Homepage = "https://github.com/az-pz/pytest-duration-guard"
+Repository = "https://github.com/az-pz/pytest-duration-guard"
+
+[project.entry-points.pytest11]
+duration_guard = "pytest_duration_guard.plugin"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pytest_duration_guard"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/pytest_duration_guard",
+    "tests",
+    "README.md",
+    "LICENSE",
+    "pyproject.toml",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The plugin exercises itself through pytester inner runs; keep it off for the
+# outer run so it doesn't write a baseline into the repo or add report noise.
+addopts = "--no-duration-guard"
