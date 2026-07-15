@@ -1,5 +1,5 @@
-# pytest-duration-guard generated baseline (do not commit local timings)
-.pytest_duration_guard/
+# pytest-speedguard generated baseline (do not commit local timings)
+.pytest_speedguard/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -1,4 +1,4 @@
-"""Terminal-summary rendering for :mod:`pytest_duration_guard`.
+"""Terminal-summary rendering for :mod:`pytest_speedguard`.
 
 Kept separate from the plugin wiring so the table/label formatting can be unit
 tested without a live pytest session.  The public :func:`render` entry point
@@ -13,7 +13,7 @@ from typing import List, Optional, Sequence
 
 __all__ = ["ReportRow", "ReportData", "render", "format_summary_line"]
 
-_SECTION_TITLE = "duration guard"
+_SECTION_TITLE = "speedguard"
 #: Longest node id we print before truncating (keeping the informative tail).
 _MAX_NODEID = 70
 
@@ -31,7 +31,7 @@ class ReportRow:
 
 @dataclass
 class ReportData:
-    """Everything :func:`render` needs to draw the duration-guard section."""
+    """Everything :func:`render` needs to draw the speedguard section."""
 
     regressions: List[ReportRow] = field(default_factory=list)
     new_slow: List[ReportRow] = field(default_factory=list)
@@ -120,7 +120,7 @@ def format_summary_line(data: ReportData) -> str:
 
 
 def render(tr, data: ReportData) -> None:
-    """Write the duration-guard section through TerminalReporter *tr*.
+    """Write the speedguard section through TerminalReporter *tr*.
 
     Stays silent when there is nothing to report, except in verbose mode where a
     single clean-bill-of-health line is emitted.
@@ -159,7 +159,7 @@ def render(tr, data: ReportData) -> None:
         ):
             tr.write_line("  " + line, red=True)
         if hidden > 0:
-            tr.write_line(f"  ... and {hidden} more (raise --duration-guard-top)")
+            tr.write_line(f"  ... and {hidden} more (raise --speedguard-top)")
 
     if data.new_slow:
         shown = data.new_slow[: data.top]
@@ -171,14 +171,14 @@ def render(tr, data: ReportData) -> None:
         ):
             tr.write_line("  " + line, yellow=True)
         if hidden > 0:
-            tr.write_line(f"  ... and {hidden} more (raise --duration-guard-top)")
+            tr.write_line(f"  ... and {hidden} more (raise --speedguard-top)")
 
     tr.write_line(format_summary_line(data), bold=True)
 
     if data.fail_enabled and data.failing:
         tr.write_line(
             "session failed: duration regressions detected "
-            "(--duration-guard-fail)",
+            "(--speedguard-fail)",
             red=True,
             bold=True,
         )

@@ -1,4 +1,4 @@
-"""pytest plugin wiring for :mod:`pytest_duration_guard`.
+"""pytest plugin wiring for :mod:`pytest_speedguard`.
 
 Responsibilities:
 
@@ -8,9 +8,9 @@ Responsibilities:
   against the rolling baseline, print the report, and update+save the baseline
   according to the configured update mode.
 
-The statistical decision-making lives in :mod:`pytest_duration_guard.stats`; the
-persistence in :mod:`pytest_duration_guard.baseline`; the rendering in
-:mod:`pytest_duration_guard.report`.  This module is pure orchestration.
+The statistical decision-making lives in :mod:`pytest_speedguard.stats`; the
+persistence in :mod:`pytest_speedguard.baseline`; the rendering in
+:mod:`pytest_speedguard.report`.  This module is pure orchestration.
 """
 
 from __future__ import annotations
@@ -22,13 +22,13 @@ from .baseline import Baseline
 from .report import ReportData, ReportRow, render
 from .stats import RegressionResult, evaluate
 
-DEFAULT_BASELINE_PATH = ".pytest_duration_guard/baseline.json"
+DEFAULT_BASELINE_PATH = ".pytest_speedguard/baseline.json"
 
 _PHASES = ("call", "total")
 _UPDATE_MODES = ("auto", "always", "never")
 
 # Registration name for the plugin instance (handy for introspection/tests).
-_PLUGIN_NAME = "duration_guard_plugin"
+_PLUGIN_NAME = "speedguard_plugin"
 
 
 # ---------------------------------------------------------------------------
@@ -44,37 +44,37 @@ def pytest_addoption(parser) -> None:
     still override per-run on the command line (CLI wins over ini).
     """
     group = parser.getgroup(
-        "duration guard",
-        "pytest-duration-guard: passive per-test duration regression tracking",
+        "speedguard",
+        "pytest-speedguard: passive per-test duration regression tracking",
     )
 
     # -- Master switch ------------------------------------------------------
     group.addoption(
-        "--duration-guard",
+        "--speedguard",
         action="store_true",
-        dest="duration_guard",
+        dest="speedguard",
         default=None,
-        help="Enable duration guard (default: on; overrides the ini setting).",
+        help="Enable speedguard (default: on; overrides the ini setting).",
     )
     group.addoption(
-        "--no-duration-guard",
+        "--no-speedguard",
         action="store_false",
-        dest="duration_guard",
+        dest="speedguard",
         default=None,
-        help="Disable duration guard for this run.",
+        help="Disable speedguard for this run.",
     )
     parser.addini(
-        "duration_guard",
+        "speedguard",
         type="bool",
         default=True,
-        help="Master switch for pytest-duration-guard (default: true).",
+        help="Master switch for pytest-speedguard (default: true).",
     )
 
     # -- Relative threshold -------------------------------------------------
     group.addoption(
-        "--duration-guard-threshold",
+        "--speedguard-threshold",
         action="store",
-        dest="duration_guard_threshold",
+        dest="speedguard_threshold",
         type=float,
         default=None,
         metavar="RATIO",
@@ -82,16 +82,16 @@ def pytest_addoption(parser) -> None:
         "median (default: 0.5).",
     )
     parser.addini(
-        "duration_guard_threshold",
+        "speedguard_threshold",
         default=0.5,
         help="Relative regression threshold (default: 0.5 = +50%%).",
     )
 
     # -- Noise floor --------------------------------------------------------
     group.addoption(
-        "--duration-guard-min-duration",
+        "--speedguard-min-duration",
         action="store",
-        dest="duration_guard_min_duration",
+        dest="speedguard_min_duration",
         type=float,
         default=None,
         metavar="SECONDS",
@@ -99,7 +99,7 @@ def pytest_addoption(parser) -> None:
         "noise-dominated (default: 0.05).",
     )
     parser.addini(
-        "duration_guard_min_duration",
+        "speedguard_min_duration",
         default=0.05,
         help="Minimum duration in seconds before a test can be flagged "
         "(default: 0.05).",
@@ -107,9 +107,9 @@ def pytest_addoption(parser) -> None:
 
     # -- Absolute statistical guard ----------------------------------------
     group.addoption(
-        "--duration-guard-noise-factor",
+        "--speedguard-noise-factor",
         action="store",
-        dest="duration_guard_noise_factor",
+        dest="speedguard_noise_factor",
         type=float,
         default=None,
         metavar="FACTOR",
@@ -117,32 +117,32 @@ def pytest_addoption(parser) -> None:
         "normal jitter (default: 3.0).",
     )
     parser.addini(
-        "duration_guard_noise_factor",
+        "speedguard_noise_factor",
         default=3.0,
         help="Multiplier on scaled MAD for the absolute guard (default: 3.0).",
     )
 
     # -- Rolling window size ------------------------------------------------
     group.addoption(
-        "--duration-guard-window",
+        "--speedguard-window",
         action="store",
-        dest="duration_guard_window",
+        dest="speedguard_window",
         type=int,
         default=None,
         metavar="N",
         help="Rolling window size (samples kept per test) (default: 20).",
     )
     parser.addini(
-        "duration_guard_window",
+        "speedguard_window",
         default=20,
         help="Rolling window size per test (default: 20).",
     )
 
     # -- Warm-up guard ------------------------------------------------------
     group.addoption(
-        "--duration-guard-min-samples",
+        "--speedguard-min-samples",
         action="store",
-        dest="duration_guard_min_samples",
+        dest="speedguard_min_samples",
         type=int,
         default=None,
         metavar="N",
@@ -150,32 +150,32 @@ def pytest_addoption(parser) -> None:
         "means it is still warming up (default: 3).",
     )
     parser.addini(
-        "duration_guard_min_samples",
+        "speedguard_min_samples",
         default=3,
         help="Minimum baseline samples before flagging (default: 3).",
     )
 
     # -- Measured phase -----------------------------------------------------
     group.addoption(
-        "--duration-guard-phase",
+        "--speedguard-phase",
         action="store",
-        dest="duration_guard_phase",
+        dest="speedguard_phase",
         choices=list(_PHASES),
         default=None,
         help="Which phase to time: 'call' (the test body) or 'total' "
         "(setup+call+teardown) (default: call).",
     )
     parser.addini(
-        "duration_guard_phase",
+        "speedguard_phase",
         default="call",
         help="Timing phase: call | total (default: call).",
     )
 
     # -- Update mode --------------------------------------------------------
     group.addoption(
-        "--duration-guard-update",
+        "--speedguard-update",
         action="store",
-        dest="duration_guard_update",
+        dest="speedguard_update",
         choices=list(_UPDATE_MODES),
         default=None,
         help="Baseline update mode: 'auto' appends the sample only if the test "
@@ -183,16 +183,16 @@ def pytest_addoption(parser) -> None:
         "only and never writes (frozen baseline) (default: auto).",
     )
     parser.addini(
-        "duration_guard_update",
+        "speedguard_update",
         default="auto",
         help="Baseline update mode: auto | always | never (default: auto).",
     )
 
     # -- Accept / re-baseline ----------------------------------------------
     group.addoption(
-        "--duration-guard-accept",
+        "--speedguard-accept",
         action="store_true",
-        dest="duration_guard_accept",
+        dest="speedguard_accept",
         default=False,
         help="Record ALL current durations as the new baseline, suppress "
         "regression reporting, and do not fail on regressions. The deliberate "
@@ -201,15 +201,15 @@ def pytest_addoption(parser) -> None:
 
     # -- CI gate ------------------------------------------------------------
     group.addoption(
-        "--duration-guard-fail",
+        "--speedguard-fail",
         action="store_true",
-        dest="duration_guard_fail",
+        dest="speedguard_fail",
         default=None,
         help="Fail the session (non-zero exit) if any regression is detected. "
         "Default is informational only (default: false).",
     )
     parser.addini(
-        "duration_guard_fail",
+        "speedguard_fail",
         type="bool",
         default=False,
         help="Fail the session on regression (default: false).",
@@ -217,24 +217,24 @@ def pytest_addoption(parser) -> None:
 
     # -- Baseline path ------------------------------------------------------
     group.addoption(
-        "--duration-guard-baseline",
+        "--speedguard-baseline",
         action="store",
-        dest="duration_guard_baseline",
+        dest="speedguard_baseline",
         default=None,
         metavar="PATH",
         help=f"Path to the baseline JSON file (default: {DEFAULT_BASELINE_PATH}).",
     )
     parser.addini(
-        "duration_guard_baseline",
+        "speedguard_baseline",
         default=DEFAULT_BASELINE_PATH,
         help=f"Baseline JSON file path (default: {DEFAULT_BASELINE_PATH}).",
     )
 
     # -- Report cap ---------------------------------------------------------
     group.addoption(
-        "--duration-guard-top",
+        "--speedguard-top",
         action="store",
-        dest="duration_guard_top",
+        dest="speedguard_top",
         type=int,
         default=20,
         metavar="N",
@@ -281,22 +281,22 @@ def _normalize_choice(value, allowed, default):
 def _resolve_settings(config) -> Settings:
     """Resolve all options into a typed :class:`Settings` (CLI beats ini)."""
     return Settings(
-        enabled=bool(_opt_or_ini(config, "duration_guard")),
-        threshold=float(_opt_or_ini(config, "duration_guard_threshold")),
-        min_duration=float(_opt_or_ini(config, "duration_guard_min_duration")),
-        noise_factor=float(_opt_or_ini(config, "duration_guard_noise_factor")),
-        window=int(_opt_or_ini(config, "duration_guard_window")),
-        min_samples=int(_opt_or_ini(config, "duration_guard_min_samples")),
+        enabled=bool(_opt_or_ini(config, "speedguard")),
+        threshold=float(_opt_or_ini(config, "speedguard_threshold")),
+        min_duration=float(_opt_or_ini(config, "speedguard_min_duration")),
+        noise_factor=float(_opt_or_ini(config, "speedguard_noise_factor")),
+        window=int(_opt_or_ini(config, "speedguard_window")),
+        min_samples=int(_opt_or_ini(config, "speedguard_min_samples")),
         phase=_normalize_choice(
-            _opt_or_ini(config, "duration_guard_phase"), _PHASES, "call"
+            _opt_or_ini(config, "speedguard_phase"), _PHASES, "call"
         ),
         update=_normalize_choice(
-            _opt_or_ini(config, "duration_guard_update"), _UPDATE_MODES, "auto"
+            _opt_or_ini(config, "speedguard_update"), _UPDATE_MODES, "auto"
         ),
-        accept=bool(config.getoption("duration_guard_accept")),
-        fail=bool(_opt_or_ini(config, "duration_guard_fail")),
-        baseline_path=str(_opt_or_ini(config, "duration_guard_baseline")),
-        top=int(config.getoption("duration_guard_top")),
+        accept=bool(config.getoption("speedguard_accept")),
+        fail=bool(_opt_or_ini(config, "speedguard_fail")),
+        baseline_path=str(_opt_or_ini(config, "speedguard_baseline")),
+        top=int(config.getoption("speedguard_top")),
     )
 
 
@@ -316,7 +316,7 @@ class _TotalParts:
     skipped: bool = False
 
 
-class DurationGuardPlugin:
+class SpeedGuardPlugin:
     """Session-scoped collector + analyser, registered in :func:`pytest_configure`."""
 
     def __init__(self, config, settings: Settings) -> None:
@@ -467,11 +467,11 @@ class DurationGuardPlugin:
     # -- Reporting ----------------------------------------------------------
 
     def pytest_terminal_summary(self, terminalreporter, exitstatus, config) -> None:
-        """Print the duration-guard section (controller only)."""
+        """Print the speedguard section (controller only)."""
         if not self.is_controller:
             return
         for warning in self.baseline_warnings:
-            terminalreporter.write_line(f"duration guard: {warning}", yellow=True)
+            terminalreporter.write_line(f"speedguard: {warning}", yellow=True)
 
         data = ReportData(
             regressions=self.regressions,
@@ -497,15 +497,15 @@ def pytest_configure(config) -> None:
     settings = _resolve_settings(config)
     if not settings.enabled:
         return
-    plugin = DurationGuardPlugin(config, settings)
+    plugin = SpeedGuardPlugin(config, settings)
     config.pluginmanager.register(plugin, _PLUGIN_NAME)
     # Stashed for introspection in tests.
-    config._duration_guard_plugin = plugin
+    config._speedguard_plugin = plugin
 
 
 def pytest_unconfigure(config) -> None:
     """Unregister the plugin instance if it was registered."""
-    plugin = getattr(config, "_duration_guard_plugin", None)
+    plugin = getattr(config, "_speedguard_plugin", None)
     if plugin is not None:
         config.pluginmanager.unregister(plugin)
-        config._duration_guard_plugin = None
+        config._speedguard_plugin = None

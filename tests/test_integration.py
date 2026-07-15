@@ -8,12 +8,12 @@ these tests focus on the plumbing.
 
 import json
 
-BASELINE_REL = ".pytest_duration_guard/baseline.json"
+BASELINE_REL = ".pytest_speedguard/baseline.json"
 
 
 def _seed(pytester, tests, phase="call"):
     """Write a baseline file under the pytester dir and return its Path."""
-    path = pytester.path / ".pytest_duration_guard" / "baseline.json"
+    path = pytester.path / ".pytest_speedguard" / "baseline.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
         json.dumps({"schema": 1, "phase": phase, "tests": tests}),
@@ -39,13 +39,15 @@ def test_first_run_seeds_baseline_no_regressions(pytester):
     result = pytester.runpytest("-p", "no:cacheprovider")
     result.assert_outcomes(passed=2)
 
-    baseline = pytester.path / ".pytest_duration_guard" / "baseline.json"
+    baseline = pytester.path / ".pytest_speedguard" / "baseline.json"
     assert baseline.exists()
     data = _load(baseline)
     assert "test_first.py::test_slow" in data["tests"]
     assert "test_first.py::test_fast" in data["tests"]
 
-    result.stdout.fnmatch_lines(["*duration guard*", "*New slow tests*"])
+    # Match the report banner (write_sep renders "=== speedguard ===") rather
+    # than the bare word, which also appears in pytest's own "plugins:" header.
+    result.stdout.fnmatch_lines(["*= speedguard =*", "*New slow tests*"])
     result.stdout.no_fnmatch_line("*Top regressions*")
 
 
@@ -78,7 +80,7 @@ def test_fail_flag_makes_session_nonzero_on_regression(pytester):
         pytester,
         {"test_fail.py::test_target": {"samples": [0.001, 0.001, 0.001, 0.001, 0.001]}},
     )
-    result = pytester.runpytest("--duration-guard-fail", "-p", "no:cacheprovider")
+    result = pytester.runpytest("--speedguard-fail", "-p", "no:cacheprovider")
     assert result.ret != 0
     result.stdout.fnmatch_lines(["*session failed*"])
 
@@ -91,11 +93,13 @@ def test_disabled_writes_no_file_and_no_section(pytester):
             time.sleep(0.2)
         """
     )
-    result = pytester.runpytest("--no-duration-guard", "-p", "no:cacheprovider")
+    result = pytester.runpytest("--no-speedguard", "-p", "no:cacheprovider")
     result.assert_outcomes(passed=1)
-    baseline = pytester.path / ".pytest_duration_guard" / "baseline.json"
+    baseline = pytester.path / ".pytest_speedguard" / "baseline.json"
     assert not baseline.exists()
-    result.stdout.no_fnmatch_line("*duration guard*")
+    # Guard against the report banner ("=== speedguard ==="), not the bare word,
+    # which also appears in pytest's "plugins: speedguard-0.1.0" header line.
+    result.stdout.no_fnmatch_line("*= speedguard =*")
 
 
 def test_sub_floor_doubling_not_flagged(pytester):
@@ -129,7 +133,7 @@ def test_never_mode_leaves_baseline_byte_identical(pytester):
     )
     before = path.read_bytes()
     result = pytester.runpytest(
-        "--duration-guard-update=never", "-p", "no:cacheprovider"
+        "--speedguard-update=never", "-p", "no:cacheprovider"
     )
     result.assert_outcomes(passed=1)
     # Comparison still happens (regression reported) ...
@@ -150,7 +154,7 @@ def test_accept_rebaselines_and_suppresses(pytester):
         pytester,
         {"test_acc.py::test_target": {"samples": [0.001, 0.001, 0.001, 0.001, 0.001]}},
     )
-    result = pytester.runpytest("--duration-guard-accept", "-p", "no:cacheprovider")
+    result = pytester.runpytest("--speedguard-accept", "-p", "no:cacheprovider")
     assert result.ret == 0
     result.stdout.no_fnmatch_line("*Top regressions*")
 
@@ -169,7 +173,7 @@ def test_parametrized_tests_tracked_separately(pytester):
     )
     result = pytester.runpytest("-p", "no:cacheprovider")
     result.assert_outcomes(passed=2)
-    data = _load(pytester.path / ".pytest_duration_guard" / "baseline.json")
+    data = _load(pytester.path / ".pytest_speedguard" / "baseline.json")
     assert "test_param.py::test_p[1]" in data["tests"]
     assert "test_param.py::test_p[2]" in data["tests"]
 
@@ -179,7 +183,7 @@ def test_ini_configuration_is_honoured(pytester):
     pytester.makeini(
         """
         [pytest]
-        duration_guard_threshold = 1000.0
+        speedguard_threshold = 1000.0
         """
     )
     pytester.makepyfile(
@@ -214,10 +218,10 @@ def test_total_phase_records_summed_duration(pytester):
         """
     )
     result = pytester.runpytest(
-        "--duration-guard-phase=total", "-p", "no:cacheprovider"
+        "--speedguard-phase=total", "-p", "no:cacheprovider"
     )
     result.assert_outcomes(passed=1)
-    data = _load(pytester.path / ".pytest_duration_guard" / "baseline.json")
+    data = _load(pytester.path / ".pytest_speedguard" / "baseline.json")
     assert data["phase"] == "total"
     # setup (~0.1) + call (~0.1) recorded together should exceed either alone.
     samples = data["tests"]["test_total.py::test_target"]["samples"]

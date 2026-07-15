@@ -2,7 +2,7 @@
 
 import json
 
-from pytest_duration_guard.baseline import SCHEMA_VERSION, Baseline
+from pytest_speedguard.baseline import SCHEMA_VERSION, Baseline
 
 
 def test_missing_file_loads_empty(tmp_path):

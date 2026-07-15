@@ -1,12 +1,12 @@
 """Unit tests for the terminal-report formatting helpers."""
 
-from pytest_duration_guard.report import (
+from pytest_speedguard.report import (
     ReportData,
     ReportRow,
     format_summary_line,
     render,
 )
-from pytest_duration_guard.report import _fmt_secs, _render_table
+from pytest_speedguard.report import _fmt_secs, _render_table
 
 
 class FakeTR:

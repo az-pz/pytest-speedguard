@@ -1,4 +1,4 @@
-"""Pure statistical core for :mod:`pytest_duration_guard`.
+"""Pure statistical core for :mod:`pytest_speedguard`.
 
 This module deliberately does **not** import :mod:`pytest`.  Everything here is
 plain arithmetic on lists of floats so that the regression-detection logic can

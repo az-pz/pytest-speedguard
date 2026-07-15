@@ -1,8 +1,8 @@
-# pytest-duration-guard
+# pytest-speedguard
 
-[![CI](https://github.com/az-pz/pytest-duration-guard/actions/workflows/ci.yml/badge.svg)](https://github.com/az-pz/pytest-duration-guard/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/pytest-duration-guard.svg)](https://pypi.org/project/pytest-duration-guard/)
-[![Python versions](https://img.shields.io/pypi/pyversions/pytest-duration-guard.svg)](https://pypi.org/project/pytest-duration-guard/)
+[![CI](https://github.com/az-pz/pytest-speedguard/actions/workflows/ci.yml/badge.svg)](https://github.com/az-pz/pytest-speedguard/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pytest-speedguard.svg)](https://pypi.org/project/pytest-speedguard/)
+[![Python versions](https://img.shields.io/pypi/pyversions/pytest-speedguard.svg)](https://pypi.org/project/pytest-speedguard/)
 
 A [pytest](https://docs.pytest.org/) plugin that **passively** tracks every
 test's wall-clock duration across runs, keeps a noise-tolerant rolling baseline,
@@ -28,14 +28,14 @@ hand for a handful of hot functions (`benchmark(func, ...)`). It won't tell you
 that `test_import_users` in your integration suite doubled last Tuesday, because
 you never wrote a benchmark for it.
 
-`pytest-duration-guard` is **passive and whole-suite**: it watches *every* test
+`pytest-speedguard` is **passive and whole-suite**: it watches *every* test
 you already have, needs **no code changes**, and answers a different question —
 "did anything in my existing suite get slower?"
 
 ## Install
 
 ```bash
-pip install pytest-duration-guard
+pip install pytest-speedguard
 ```
 
 The plugin auto-registers via pytest's `pytest11` entry point — nothing else to
@@ -56,7 +56,7 @@ pytest
 Example output when something regressed:
 
 ```
-=============================== duration guard ================================
+=============================== speedguard ================================
 Top regressions:
   test                          baseline  current    delta  n
   ----------------------------  --------  -------  -------  -
@@ -65,7 +65,7 @@ Top regressions:
 ```
 
 By default this is **informational** (it never fails your build). Add
-`--duration-guard-fail` to turn it into a CI gate.
+`--speedguard-fail` to turn it into a CI gate.
 
 ## How the statistical model works (and why)
 
@@ -108,18 +108,18 @@ The command line wins over `ini`.
 
 | CLI flag | ini key | Type | Default | Description |
 | --- | --- | --- | --- | --- |
-| `--duration-guard` / `--no-duration-guard` | `duration_guard` | bool | `true` | Master switch. |
-| `--duration-guard-threshold` | `duration_guard_threshold` | float | `0.5` | Relative regression threshold (`0.5` = +50%). |
-| `--duration-guard-min-duration` | `duration_guard_min_duration` | float (s) | `0.05` | Ignore tests faster than this (noise floor). |
-| `--duration-guard-noise-factor` | `duration_guard_noise_factor` | float | `3.0` | Require `current > median + factor × scaled_mad`. |
-| `--duration-guard-window` | `duration_guard_window` | int | `20` | Rolling window size (samples kept per test). |
-| `--duration-guard-min-samples` | `duration_guard_min_samples` | int | `3` | Minimum baseline samples before flagging (warm-up). |
-| `--duration-guard-phase` | `duration_guard_phase` | `call` \| `total` | `call` | Time the test body (`call`) or `setup+call+teardown` (`total`). |
-| `--duration-guard-update` | `duration_guard_update` | `auto` \| `always` \| `never` | `auto` | Baseline update policy (see below). |
-| `--duration-guard-accept` | — | flag | off | Re-baseline: record all current durations, suppress reporting, don't fail. |
-| `--duration-guard-fail` | `duration_guard_fail` | bool | `false` | Fail the session (non-zero exit) on any regression — the CI gate. |
-| `--duration-guard-baseline` | `duration_guard_baseline` | path | `.pytest_duration_guard/baseline.json` | Baseline file location. |
-| `--duration-guard-top` | — | int | `20` | Max rows per report section. |
+| `--speedguard` / `--no-speedguard` | `speedguard` | bool | `true` | Master switch. |
+| `--speedguard-threshold` | `speedguard_threshold` | float | `0.5` | Relative regression threshold (`0.5` = +50%). |
+| `--speedguard-min-duration` | `speedguard_min_duration` | float (s) | `0.05` | Ignore tests faster than this (noise floor). |
+| `--speedguard-noise-factor` | `speedguard_noise_factor` | float | `3.0` | Require `current > median + factor × scaled_mad`. |
+| `--speedguard-window` | `speedguard_window` | int | `20` | Rolling window size (samples kept per test). |
+| `--speedguard-min-samples` | `speedguard_min_samples` | int | `3` | Minimum baseline samples before flagging (warm-up). |
+| `--speedguard-phase` | `speedguard_phase` | `call` \| `total` | `call` | Time the test body (`call`) or `setup+call+teardown` (`total`). |
+| `--speedguard-update` | `speedguard_update` | `auto` \| `always` \| `never` | `auto` | Baseline update policy (see below). |
+| `--speedguard-accept` | — | flag | off | Re-baseline: record all current durations, suppress reporting, don't fail. |
+| `--speedguard-fail` | `speedguard_fail` | bool | `false` | Fail the session (non-zero exit) on any regression — the CI gate. |
+| `--speedguard-baseline` | `speedguard_baseline` | path | `.pytest_speedguard/baseline.json` | Baseline file location. |
+| `--speedguard-top` | — | int | `20` | Max rows per report section. |
 
 ## Update modes and `--accept`
 
@@ -135,13 +135,13 @@ Controls how the baseline window is updated after a run:
 - **`never`** — compare only, never write. The baseline is **frozen**.
   Recommended for CI against a committed baseline file (see below).
 
-**`--duration-guard-accept`** is the deliberate way to move the baseline after an
+**`--speedguard-accept`** is the deliberate way to move the baseline after an
 *intended* slowdown: it records **all** current durations as the new baseline,
 suppresses regression reporting for that run, and won't fail on regressions.
 
 ```bash
 # You intentionally made things slower and that's fine — accept the new normal:
-pytest --duration-guard-accept
+pytest --speedguard-accept
 ```
 
 ## Known limitation: slow-creep under the per-run threshold
@@ -156,23 +156,23 @@ it. Over a year that's a large regression that was never flagged, because no
 
 1. Seed and commit a baseline file to your repo:
    ```bash
-   pytest --duration-guard-update=always   # build up samples over a few runs
-   git add .pytest_duration_guard/baseline.json
+   pytest --speedguard-update=always   # build up samples over a few runs
+   git add .pytest_speedguard/baseline.json
    git commit -m "Freeze test duration baseline"
    ```
 2. In CI, compare against that fixed reference and never rewrite it:
    ```bash
-   pytest --duration-guard-update=never --duration-guard-fail
+   pytest --speedguard-update=never --speedguard-fail
    ```
 
 Now drift is measured against a **fixed** point in time, so slow-creep
 accumulates against a stable reference and is caught. Re-baseline deliberately
-(`--duration-guard-accept`, then commit the file) whenever you accept a new
+(`--speedguard-accept`, then commit the file) whenever you accept a new
 normal.
 
 ## Parallel runs (pytest-xdist)
 
-`pytest-duration-guard` is **xdist-aware** in v1 via **controller-side
+`pytest-speedguard` is **xdist-aware** in v1 via **controller-side
 aggregation**. Workers just run tests and stream their reports back to the
 controller; all comparison, reporting, and baseline writing happen **only on the
 controller** (guarded by `hasattr(config, "workerinput")`), so there are no

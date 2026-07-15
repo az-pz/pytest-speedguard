@@ -1,4 +1,4 @@
-"""Persistent rolling-baseline storage for :mod:`pytest_duration_guard`.
+"""Persistent rolling-baseline storage for :mod:`pytest_speedguard`.
 
 The baseline is a small JSON document holding, per test node id, a rolling
 window of that test's most recent durations::

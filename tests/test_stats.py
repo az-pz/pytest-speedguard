@@ -8,7 +8,7 @@ import math
 
 import pytest
 
-from pytest_duration_guard.stats import (
+from pytest_speedguard.stats import (
     MAD_TO_STD,
     RegressionResult,
     evaluate,
